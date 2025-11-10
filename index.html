@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="es" oncontextmenu="return false;">
+
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta charset="utf-8" />
+    <title>Invitación XV</title>
+    <style>
+        :root {
+            /* colores y resets mínimos */
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            background: #000;
+            overflow: hidden;
+            /* bloquear selección/llamado largo */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        /* VIDEO de fondo */
+        .bg-video {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100dvh;
+            /* alto “real” en móviles */
+            object-fit: cover;
+            object-position: center;
+            z-index: 0;
+            /* detrás del resto */
+            pointer-events: none;
+            /* sin interacción directa */
+            background: #000;
+        }
+
+        /* Capa para bloquear long-press/descarga */
+        .shield {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100dvh;
+            z-index: 10;
+            background: transparent;
+            /* redundancias para mobile */
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+            touch-action: none;
+        }
+
+        /* Contenedor de UI (botón) por encima de la shield */
+        .ui {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            z-index: 20;
+            /* por encima de shield */
+            pointer-events: none;
+            /* UI no bloquea el tap salvo el botón */
+        }
+
+        .play-btn {
+            pointer-events: auto;
+            font: 600 16px/1 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            padding: 14px 22px;
+            border-radius: 999px;
+            border: 0;
+            background: #fff;
+            color: #000;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, .25);
+        }
+
+        /* (opcional) texto “Entrá y subí el volumen si lo tenés bajo” */
+        .hint {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            color: #fff;
+            font: 500 12px/1.2 system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+            opacity: .85;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- VIDEO DE FONDO -->
+    <video id="bg" class="bg-video" playsinline webkit-playsinline loop preload="auto" disablepictureinpicture
+        controlslist="nodownload noplaybackrate noremoteplayback" src="esESTEEEEEE.mp4"></video>
+
+    <!-- SHIELD para bloquear long-press -->
+    <div class="shield" id="shield"></div>
+
+    <!-- UI: botón de inicio -->
+    <div class="ui" id="ui">
+        <button class="play-btn" id="playBtn" type="button">Entrar</button>
+    </div>
+    <div class="hint">Tocá “Entrar” para activar el sonido</div>
+
+    <script>
+        (function () {
+            const video = document.getElementById('bg');
+            const playBtn = document.getElementById('playBtn');
+            const ui = document.getElementById('ui');
+            const shield = document.getElementById('shield');
+
+            // Bloquear menú contextual y “long-press” lo más posible
+            const block = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            };
+            ['contextmenu', 'dragstart', 'selectstart', 'gesturestart'].forEach(evt => {
+                document.addEventListener(evt, block, {
+                    passive: false
+                });
+                shield.addEventListener(evt, block, {
+                    passive: false
+                });
+            });
+            // En iOS ayuda también prevenir algunos toques prolongados
+            ['touchstart', 'touchend', 'pointerdown', 'pointerup'].forEach(evt => {
+                shield.addEventListener(evt, block, {
+                    passive: false
+                });
+            });
+
+            // Reproducción con sonido tras gesto del usuario
+            async function startPlayback() {
+                try {
+                    // Algunos navegadores requieren setear muted antes y luego desmutear en el mismo gesto
+                    video.muted = false;
+                    video.volume = 1.0;
+
+                    // iOS a veces necesita un .load() antes del .play() después de cambios
+                    try {
+                        video.load();
+                    } catch (_) {}
+
+                    const p = video.play();
+                    if (p && typeof p.then === 'function') {
+                        await p;
+                    }
+
+                    // Ocultar la UI una vez que reproduce
+                    ui.style.display = 'none';
+
+                    // Dejar la shield puesta para evitar long-press sobre el video
+                    // (si necesitás interacción en la página, podés quitarla)
+                    // shield.style.display = 'none';
+
+                } catch (err) {
+                    // Si falla (p. ej. bloqueo de autoplay con sonido),
+                    // mostrá el botón por si el usuario vuelve a intentar.
+                    console.warn('No se pudo reproducir aún:', err);
+                    ui.style.display = '';
+                }
+            }
+
+            playBtn.addEventListener('click', startPlayback, {
+                passive: true
+            });
+
+            // Si el usuario vuelve a la pestaña, re-aseguramos el loop con sonido
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && !video.paused) {
+                    try {
+                        video.muted = false;
+                        video.volume = 1.0;
+                    } catch (_) {}
+                }
+            });
+        })();
+    </script>
+</body>
+
+</html>
